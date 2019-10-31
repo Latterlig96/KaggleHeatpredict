@@ -64,14 +64,6 @@ def reduce_mem_usage(df: pd.DataFrame) -> pd.DataFrame:
     print("This is ",100*mem_usg/start_mem_usg,"% of the initial size")
     return df, NAlist
 
-def filling_nan_values(df: pd.DataFrame) -> pd.DataFrame: 
-    ratio = df.count()/len(df) 
-    cols = ratio[ratio < 1].index 
-    for col in cols: 
-        print(f"Filling Column:{col}")
-        df[col] = df[col].fillna(df[col].mean())
-    return df
-
 
 def rmsle_metric(y_true,y_pred): 
     return np.sqrt(mean_squared_log_error(y_true,y_pred))
