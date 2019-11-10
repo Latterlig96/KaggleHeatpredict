@@ -63,7 +63,3 @@ def reduce_mem_usage(df: pd.DataFrame) -> pd.DataFrame:
     print("Memory usage is: ",mem_usg," MB")
     print("This is ",100*mem_usg/start_mem_usg,"% of the initial size")
     return df, NAlist
-
-
-def rmsle_metric(y_true,y_pred): 
-    return np.sqrt(mean_squared_log_error(y_true,y_pred))
