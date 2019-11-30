@@ -15,9 +15,9 @@ def train_df(build_meta_csv: str,
         col_drop = None,
         axis = None) -> pd.DataFrame:
         # Reading data
-        build = pd.read_csv(build_meta_csv)
-        train_data = pd.read_csv(train_csv)
-        weather = pd.read_csv(weather_train_csv)
+        build = pd.read_csv(build_meta_csv)[0:3000]
+        train_data = pd.read_csv(train_csv)[0:3000]
+        weather = pd.read_csv(weather_train_csv)[0:3000]
         # Reducing memory on the train data
         train = reduce_mem_usage(train_data)
         if merge:
@@ -49,8 +49,8 @@ def test_df(test_csv : str,
         col_drop = None,
         axis = None) -> pd.DataFrame:
         # Reading data 
-        test_data = pd.read_csv(test_csv)
-        weather_test = pd.read_csv(weather_test_csv)
+        test_data = pd.read_csv(test_csv)[0:3000]
+        weather_test = pd.read_csv(weather_test_csv)[0:3000]
         # Reducing memory on the test data 
         test = reduce_mem_usage(test_data)
         if merge:
@@ -79,30 +79,3 @@ def filling_nan_values(df: pd.DataFrame) -> pd.DataFrame:
         print(f"Filling Column:{col}")
         df[col] = df[col].fillna(df[col].mean())
     return df
-
-
-
-
-
-
-
-
-
-
-        
-
-
-        
-
-        
-
-
-
-
-            
-            
-
-            
-
-            
-

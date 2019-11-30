@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np 
 import os 
 import matplotlib.pyplot as plt
+import catboost
 import json 
 from sklearn.model_selection import StratifiedKFold,TimeSeriesSplit,KFold
 from sklearn.model_selection import train_test_split
@@ -14,6 +15,7 @@ class GBM:
     def __init__(self,
                 train_gbm : bool,
                 train_xg : bool,
+                train_cat : bool,
                 test_predict : bool, 
                 save_model : bool,
                 save_history : bool,
@@ -27,6 +29,7 @@ class GBM:
                 jsonize : bool): 
                 self.train_gbm = train_gbm
                 self.train_xg = train_xg
+                self.train_cat = train_cat
                 self.test_predict = test_predict 
                 self.save_model = save_model
                 self.save_history = save_history
@@ -123,7 +126,7 @@ class GBM:
                     if self.importance: 
                         self.visualize_importance(i,src_dir)
                         
-                else: 
+                elif self.train_xg: 
                     print("Train XGBooost")
                     train_X = X_train.iloc[train_index]
                     val_X = X_train.iloc[val_index]
@@ -147,7 +150,7 @@ class GBM:
                     valid_predictions[val_index,i] = xgboost_train.predict(xg_val,
                                                                            ntree_limit = xgboost_train.best_ntree_limit)
 
-                    r2= r2_score(val_y[val_index],valid_predictions[val_index,i])
+                    r2 = r2_score(val_y[val_index],valid_predictions[val_index,i])
                     print(f"R2 Score for current validation set:{r2}")
                     
                     if self.save_model:
@@ -162,8 +165,33 @@ class GBM:
                         test_predictions[:,i] = self.predict_test(X_test,i,src_dir,xgboost_train)
 
                     if self.importance: 
-                        self.visualize_importance(i,src_dir)
-                        
+                        self.visualize_importance(i,src_dir) 
+                
+                elif self.train_cat: 
+                    print("Training CatBoost")
+                    train_X = np.array(X_train.iloc[train_index],dtype=np.float32)
+                    val_X = np.array(X_train.iloc[val_index],dtype=np.float32)
+                    if isinstance(y_train,pd.DataFrame): 
+                        train_y = np.array(y_train.iloc[train_index],dtype=np.float32)
+                        val_y = np.array(y_train.iloc[val_index],dtype=np.float32)
+                    else: 
+                        train_y = np.array(y_train[train_index],dtype=np.float32)
+                        val_y = np.array(y_train[val_index],dtype=np.float32)
+                    
+                    cat_train = catboost.Pool(train_X,label=train_y)
+                    cat_test = catboost.Pool(val_X,label=val_y)
+                    self.cat = catboost.CatBoostRegressor(**parameters).fit(cat_train,use_best_model=True,
+                                                                       eval_set=cat_test,verbose_eval=True) 
+                    #Index Error after first epoch, need to fix it
+                    valid_predictions[val_index,i] = self.cat.predict(cat_test)
+                    r2 = r2_score(val_y[val_index],valid_predictions[val_index,i])
+                    print(f"R2 Score for current validation set:{r2}")
+                    if self.save_model:
+                        print("Saving model")
+                        self.cat.save_model(f'{src_dir}/fold_{i}_{self.name}_eval_history',format='json')
+
+                    if self.test_predict: 
+                        test_predictions[:,i] = self.predict_test(X_test,i,src_dir)
                 i += 1
             if self.jsonize:
                 print("Saving model parameters to json")
@@ -176,16 +204,19 @@ class GBM:
                 self.output_submission(self,test_predictions,i)
 
             return valid_predictions,test_predictions
-
-    
+            
     def predict_test(self,X_test,index,source_dir,xgb_model = None):
         if self.train_gbm:
             gbm = lgb.Booster(model_file =f"{source_dir}/fold_{index}_{self.name}_eval_history.txt")
             test_predict = gbm.predict(X_test,num_iteration = gbm.best_iteration)
             return test_predict
-        elif xgb_model is not None:
+        elif self.train_xg and xgb_model is not None:
             xg_mod = xgb.Booster(model_file=f"{source_dir}/fold_{index}_{self.name}_eval_history.txt")
             test_predict = xg_mod.predict(xgb.DMatrix(X_test),ntree_limit=xgb_model.best_ntree_limit)
+            return test_predict
+        elif self.train_cat:
+            self.cat.load_model(f'{source_dir}/fold_{index}_{self.name}_eval_history',format='json')
+            test_predict = self.cat.predict(catboost.Pool(X_test))
             return test_predict
 
     def visualize_importance(self,index,source_dir): 
@@ -194,12 +225,15 @@ class GBM:
             gbm = lgb.Booster(model_file =f"{source_dir}/fold_{index}_{self.name}_eval_history.txt")
             importance = gbm.feature_importance() 
             names = gbm.feature_name()
-        else: 
+        elif self.train_xg: 
             xg_mod = xgb.Booster(model_file=f"{source_dir}/fold_{index}_{self.name}_eval_history.txt")
-            
             importance = list(xg_mod.get_fscore().values())
             names = list(xg_mod.get_fscore().keys())
-        
+        elif self.train_cat:
+            cat_model = self.cat.load_model(f'{source_dir}/fold_{index}_{self.name}_eval_history',format='json')
+            importance = cat_model.feature_importances_
+            names = cat_model.feature_names_
+
         df_importance = pd.DataFrame() 
         df_importance['importance'] = importance
         df_importance['names'] = names 
@@ -208,17 +242,13 @@ class GBM:
  
         if self.train_gbm: 
             plt.title("LightGBM current validation set importance")
-        else: 
+        elif self.train_xg: 
             plt.title("XGBoost current validation set importance")
+        elif self.train_cat: 
+            plt.title("CatBoost current validation set importance")
     
     def output_submission(self,predictions,index,save = True): 
         print("Preparing submission")
-        if src_dir:
-            if os.path.isdir(src_dir):
-                pass
-            else:
-                print(f"Making dir:{src_dir}")
-                os.makedirs(src_dir)
         submission = pd.read_csv('./data/sample_submission.csv')
         submission['predictions'] = predictions
         if save: 
