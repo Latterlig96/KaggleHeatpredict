@@ -184,8 +184,8 @@ class GBM:
                                                                        eval_set=cat_test,verbose_eval=True) 
                     #Index Error after first epoch, need to fix it
                     valid_predictions[val_index,i] = self.cat.predict(cat_test)
-                    r2 = r2_score(val_y[val_index],valid_predictions[val_index,i])
-                    print(f"R2 Score for current validation set:{r2}")
+                    #r2 = r2_score(val_y[val_index],valid_predictions[val_index,i])
+                    #print(f"R2 Score for current validation set:{r2}")
                     if self.save_model:
                         print("Saving model")
                         self.cat.save_model(f'{src_dir}/fold_{i}_{self.name}_eval_history',format='json')
@@ -195,6 +195,11 @@ class GBM:
                 i += 1
             if self.jsonize:
                 print("Saving model parameters to json")
+                if os.path.isdir('parameters'):
+                    pass
+                else:
+                    print("Making Dir: parameters")
+                    os.makedirs('parameters')
                 model_dict = {"model":f"{src_dir}_{i}_folds",
                               "parameters":parameters}
                 with open(f"./parameters/{src_dir}_{i}_fold.json",'w+') as model_param: 

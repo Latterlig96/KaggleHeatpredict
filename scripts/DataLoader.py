@@ -1,6 +1,6 @@
 import pandas as pd 
 import numpy as np
-from utils import reduce_mem_usage
+from model_utils import reduce_mem_usage
 import category_encoders as ce
 from sklearn.preprocessing import LabelEncoder
 import gc
