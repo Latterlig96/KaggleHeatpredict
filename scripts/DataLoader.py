@@ -3,6 +3,7 @@ import numpy as np
 from model_utils import reduce_mem_usage
 import category_encoders as ce
 from sklearn.preprocessing import LabelEncoder
+from collections import defaultdict
 import gc
 
 def train_df(build_meta_csv: str, 
@@ -12,12 +13,13 @@ def train_df(build_meta_csv: str,
         datetime : bool,
         unmerged : bool,
         drop : bool,
+        encode_and_scale : bool,
         col_drop = None,
         axis = None) -> pd.DataFrame:
         # Reading data
-        build = pd.read_csv(build_meta_csv)[0:3000]
-        train_data = pd.read_csv(train_csv)[0:3000]
-        weather = pd.read_csv(weather_train_csv)[0:3000]
+        build = pd.read_csv(build_meta_csv)
+        train_data = pd.read_csv(train_csv)
+        weather = pd.read_csv(weather_train_csv)
         # Reducing memory on the train data
         train = reduce_mem_usage(train_data)
         if merge:
@@ -35,6 +37,11 @@ def train_df(build_meta_csv: str,
         if drop:
             train = train.drop(col_drop,axis=axis)
             gc.collect()
+        if encode_and_scale: 
+            le = LabelEncoder() 
+            train['primary_use'] = le.fit(train['primary_use']).transform(train['primary_use'])
+            train['meter'] = np.log1p(train['meter'])
+            train['square_feet'] = np.log1p(train['square_feet'])
         if unmerged: 
             return build,train,weather
         else: 
@@ -49,8 +56,8 @@ def test_df(test_csv : str,
         col_drop = None,
         axis = None) -> pd.DataFrame:
         # Reading data 
-        test_data = pd.read_csv(test_csv)[0:3000]
-        weather_test = pd.read_csv(weather_test_csv)[0:3000]
+        test_data = pd.read_csv(test_csv)[0:1000000]
+        weather_test = pd.read_csv(weather_test_csv)[0:1000000]
         # Reducing memory on the test data 
         test = reduce_mem_usage(test_data)
         if merge:
@@ -68,7 +75,7 @@ def test_df(test_csv : str,
             test = test.drop(col_drop,axis=axis)
             gc.collect()
         if unmerged: 
-            return build_meta,test,weather_test, 
+            return test,weather_test
         else: 
             return test
         

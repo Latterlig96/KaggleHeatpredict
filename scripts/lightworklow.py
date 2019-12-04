@@ -8,7 +8,11 @@ import catboost
 import json 
 from sklearn.model_selection import StratifiedKFold,TimeSeriesSplit,KFold
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import r2_score,f1_score
+from sklearn.metrics import r2_score,mean_squared_error,auc
+from ngboost.ngboost import NGBoost 
+from ngboost.distns import Normal 
+from ngboost.learners import default_tree_learner
+from ngboost.scores import MLE 
 
 
 class GBM:
@@ -16,6 +20,7 @@ class GBM:
                 train_gbm : bool,
                 train_xg : bool,
                 train_cat : bool,
+                train_ng : bool,
                 test_predict : bool, 
                 save_model : bool,
                 save_history : bool,
@@ -26,16 +31,19 @@ class GBM:
                 eval_metric,
                 time_series : bool,
                 prepare_submission : bool,
-                jsonize : bool): 
+                jsonize : bool,
+                show_metric_results : bool): 
                 self.train_gbm = train_gbm
                 self.train_xg = train_xg
                 self.train_cat = train_cat
+                self.train_ng = train_ng
                 self.test_predict = test_predict 
                 self.save_model = save_model
                 self.save_history = save_history
                 self.seed = seed
                 self.name = name
                 self.prepare_submission = prepare_submission
+                self.show_metric_results = show_metric_results
                 self.history = {}
                 self.importance = importance
                 self.stratify = stratify
@@ -79,7 +87,7 @@ class GBM:
                 kf = KFold(n_splits=n_folds,random_state = self.seed)
 
             valid_predictions = np.zeros((X_train.shape[0],n_folds))
-            test_predictions = np.zeros((X_train.shape[0],n_folds))
+            test_predictions = np.zeros((X_test.shape[0],n_folds))
             print("vaild_predict",valid_predictions.shape[0])
             print("test_predictions",test_predictions.shape[0])
             
@@ -125,6 +133,9 @@ class GBM:
                     
                     if self.importance: 
                         self.visualize_importance(i,src_dir)
+                    
+                    if self.show_metric_results:
+                        self.show_results(i)
                         
                 elif self.train_xg: 
                     print("Train XGBooost")
@@ -137,8 +148,8 @@ class GBM:
                         train_y = y_train[train_index]
                         val_y = y_train[val_index]
                     
-                    xg_train = xgb.DMatrix(train_X,label=train_y)
-                    xg_val = xgb.DMatrix(val_X,label=val_y)
+                    xg_train = xgb.DMatrix(train_X,label=train_y,feature_names=X_train.columns)
+                    xg_val = xgb.DMatrix(val_X,label=val_y,feature_names=X_train.columns)
                     eval_list = [(xg_train,'train'),(xg_val,'val')]
 
                     xgboost_train = xgb.train(parameters,xg_train,evals=eval_list,
@@ -152,7 +163,7 @@ class GBM:
 
                     r2 = r2_score(val_y[val_index],valid_predictions[val_index,i])
                     print(f"R2 Score for current validation set:{r2}")
-                    
+                
                     if self.save_model:
                         print("Saving model")
                         xgboost_train.save_model(f'{src_dir}/fold_{i}_{self.name}_eval_history.txt')
@@ -165,7 +176,10 @@ class GBM:
                         test_predictions[:,i] = self.predict_test(X_test,i,src_dir,xgboost_train)
 
                     if self.importance: 
-                        self.visualize_importance(i,src_dir) 
+                        self.visualize_importance(i,src_dir)
+                    
+                    if self.show_metric_results: 
+                        self.show_results(i)
                 
                 elif self.train_cat: 
                     print("Training CatBoost")
@@ -192,6 +206,28 @@ class GBM:
 
                     if self.test_predict: 
                         test_predictions[:,i] = self.predict_test(X_test,i,src_dir)
+
+                elif self.train_ng: 
+                    print("Train NGBooost")
+                    train_X = X_train.iloc[train_index]
+                    val_X = X_train.iloc[val_index]
+                    if isinstance(y_train,pd.DataFrame): 
+                        train_y = y_train.iloc[train_index]
+                        val_y = y_train.iloc[val_index]
+                    else: 
+                        train_y = y_train[train_index]
+                        val_y = y_train[val_index]
+
+                        ng = NGBoost(Dist=Normal,Score=MLE,
+                                     Base=default_tree_learner,natural_gradient=True,
+                                     n_estimators = 150,learning_rate = 0.01,verbose=True,
+                                     verbose_eval=50).fit(train_X,train_y)
+                        valid_predictions[val_index,i] = ng.predict(val_X)
+                        rmse = np.sqrt(mean_squared_error(val_y,valid_predictions[val_index,i]))
+                        r2 = r2_score(val_y,valid_predictions[val_index,i])
+                        print(f"RMSE for current fold:{rmse}")
+                        print(f"R2 Score for current fold:{r2}")
+                        test_predictions[:,i] = ng.predict(X_test)
                 i += 1
             if self.jsonize:
                 print("Saving model parameters to json")
@@ -223,7 +259,19 @@ class GBM:
             self.cat.load_model(f'{source_dir}/fold_{index}_{self.name}_eval_history',format='json')
             test_predict = self.cat.predict(catboost.Pool(X_test))
             return test_predict
-
+    
+    def show_results(self,index):
+        if self.train_gbm: 
+            auc_score = np.max(self.history['valid_1']['auc'])
+            rmse_score = np.min(self.history['valid_1']['rmse'])
+            print("Best score for current validation set:\n")
+            print(f"RMSE:{rmse_score},AUC:{auc_score}")
+        elif self.train_xg: 
+            auc_score = np.max(self.history['val']['auc'])
+            rmse_score = np.max(self.history['val']['rmse'])
+            print("Best score for current validation set:\n")
+            print(f"RMSE:{rmse_score},AUC:{auc_score}")
+        
     def visualize_importance(self,index,source_dir): 
         print("Visualize plot importance")
         if self.train_gbm:
