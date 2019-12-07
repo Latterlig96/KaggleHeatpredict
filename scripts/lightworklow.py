@@ -16,6 +16,67 @@ from ngboost.scores import MLE
 
 
 class GBM:
+    """
+        The main purpose of this function is to provide necesarry
+
+        functionality for users that would like to use Base-Tree models 
+
+        such as LightGBM,XGBoost,Catboost or the most recent model NGBoost.
+
+        LightGBM and XGBoost and NGBoost can be performed on classification 
+
+        and regression tasks when Catboost can be used just for regression problems. 
+
+        Fuction can be also used to provide base functionality for ensemble models. 
+
+        Arguments:
+        ============================================================================
+        : train_gbm - bool - whether to train LightGBM 
+
+        : train_xg  - bool - whether to train XGBoost 
+
+        : train_cat - bool - whether to train Catboost 
+
+        : train_ng - bool - whether to train NGBoost
+
+        : test_predict - bool - bool to choose whether to test model on unseen test data 
+
+        : save_model - bool - whether to save_model, specific source dir for model 
+
+        is specified in fold_run function 
+
+        : save_history - bool - whether to save model loss history 
+
+        : seed - int - random seed 
+        
+        : name - str - this provides some easy to use name in source dir to find 
+        specified model 
+
+        : importance - bool - whether to plot feature importance for model 
+        (this function does not cover the CatBoost and NGBoost, so can be turned to False
+        when training one of mentioned models)
+
+        : stratify - bool - whether to use StratifiedKFold (sklearn implementation)
+
+        : eval_metric - function - custom metric made by the user that can be passed to model 
+        as a loss metric 
+
+        : time_series - bool - whether to use TimeSeriesSplit (sklearn implementation) 
+
+        : prepare_submission - bool - whether to save predictions of models into pandas DataFrame 
+
+        : jsonize - bool - this arguments provides saving the model run parameters that are saved 
+        into json format 
+
+        # Mentions 
+        In XGBoost,CatBoost and NGBoost model was used function nan_to_num offered by numpy API.
+        
+        This is because there were a lot of problems with Sklearn API that could not handle this 
+
+        kind of prepared dataset and was throwing error that dataset consist of NaN values, but in reality 
+        
+        there were 0 NaN Values.
+        """
     def __init__(self,
                 train_gbm : bool,
                 train_xg : bool,
@@ -59,6 +120,30 @@ class GBM:
             n_folds : int,
             parameters = None,
             categorical_features = None):
+
+            """
+            # Arguments: 
+            : src_dir - str - main dir for saving model,history and fold runs 
+            
+            : X_train,y_train - training dataset with labels 
+
+            : X_test,y_test - test dataset with labels
+
+            : n_folds - number of folds to split dataset 
+
+            : parameters - run_parameters that are necessary to run the Tree-Based models,
+
+            for better understading of these parameters, you should go and read LightGBM,
+
+            XGBoost,CatBoost API 
+
+            : categorical_features - list - list of categorical features in dataset, 
+
+            necessary for LightGBM and CatBoost
+
+            # Returns: 
+            valid_predictions,test_predictions - predictions made by model
+            """
 
             if isinstance(y_train, pd.DataFrame):
                 y_train = y_train.values

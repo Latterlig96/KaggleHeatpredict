@@ -1,6 +1,13 @@
 from bayes_opt import BayesianOptimization
 from collections import defaultdict
 import json 
+
+
+# Script does not work, there is much to do. 
+# TODO 
+# Fix errors that ocurring while executing the script 
+# Add more regression necessary functions such as 
+# residual plots, CookDistance etc...
 class Optimization: 
     def __init__(self,
                 raw_model,  

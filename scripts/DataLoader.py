@@ -6,6 +6,18 @@ from sklearn.preprocessing import LabelEncoder
 from collections import defaultdict
 import gc
 
+"""
+    This script consist of all functions that are used in preparring dataset, without 
+
+    using many lines of code. For train set there are performed some basic preparation 
+
+    methods such as mergin different dataset,scaling values that are too large so that 
+
+    they will not have big impact on training process,Encoding categorical feature,
+
+    finding minimal bit representation of features and dropping dataset after merging.
+
+"""
 def train_df(build_meta_csv: str, 
         train_csv : str, 
         weather_train_csv : str,
