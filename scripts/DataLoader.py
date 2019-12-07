@@ -40,7 +40,7 @@ def train_df(build_meta_csv: str,
         if encode_and_scale: 
             le = LabelEncoder() 
             train['primary_use'] = le.fit(train['primary_use']).transform(train['primary_use'])
-            train['meter'] = np.log1p(train['meter'])
+            train['meter_reading'] = np.log1p(train['meter_reading'])
             train['square_feet'] = np.log1p(train['square_feet'])
         if unmerged: 
             return build,train,weather
