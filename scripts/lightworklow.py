@@ -67,15 +67,7 @@ class GBM:
 
         : jsonize - bool - this arguments provides saving the model run parameters that are saved 
         into json format 
-
-        # Mentions 
-        In XGBoost,CatBoost and NGBoost model was used function nan_to_num offered by numpy API.
         
-        This is because there were a lot of problems with Sklearn API that could not handle this 
-
-        kind of prepared dataset and was throwing error that dataset consist of NaN values, but in reality 
-        
-        there were 0 NaN Values.
         """
     def __init__(self,
                 train_gbm : bool,
@@ -201,7 +193,7 @@ class GBM:
                                     verbose_eval = parameters['verbose_eval'],
                                     feval = self.eval_metric)
                     valid_predictions[val_index,i] = gbm.predict(val_X,num_iteration=gbm.best_iteration)
-                    valid_predictions[val_index,i] = np.clip(np.nan_to_num(valid_predictions[val_index,i]),a_min=0,a_max=None)
+                    valid_predictions[val_index,i] = np.clip(valid_predictions[val_index,i],a_min=0,a_max=None)
 
                     r2= r2_score(val_y[val_index],valid_predictions[val_index,i])
                     log_error = np.sqrt(mean_squared_log_error(val_y[val_index],valid_predictions[val_index,i]))
@@ -218,7 +210,7 @@ class GBM:
                     
                     if self.test_predict: 
                         test_predictions[:,i] = self.predict_test(X_test,i,src_dir)
-                        test_predictions[:,i] = np.clip(np.nan_to_num(test_predictions[:,i]),a_min=0,a_max=None)
+                        test_predictions[:,i] = np.clip(test_predictions[:,i],a_min=0,a_max=None)
 
                     if self.importance: 
                         self.visualize_importance(i,src_dir)
@@ -228,14 +220,14 @@ class GBM:
                         
                 elif self.train_xg: 
                     print("Train XGBooost")
-                    train_X = np.nan_to_num(X_train.iloc[train_index])
-                    val_X = np.nan_to_num(X_train.iloc[val_index])
+                    train_X = X_train.iloc[train_index]
+                    val_X = X_train.iloc[val_index]
                     if isinstance(y_train,pd.DataFrame): 
-                        train_y = np.nan_to_num(y_train.iloc[train_index])
-                        val_y = np.nan_to_num(y_train.iloc[val_index])
+                        train_y = y_train.iloc[train_index]
+                        val_y = y_train.iloc[val_index]
                     else: 
-                        train_y = np.nan_to_num(y_train[train_index])
-                        val_y = np.nan_to_num(y_train[val_index])
+                        train_y = y_train[train_index]
+                        val_y =  y_train[val_index]
                     
                     xg_train = xgb.DMatrix(train_X,label=train_y,feature_names=X_train.columns)
                     xg_val = xgb.DMatrix(val_X,label=val_y,feature_names=X_train.columns)
@@ -249,7 +241,7 @@ class GBM:
 
                     valid_predictions[val_index,i] = xgboost_train.predict(xg_val,
                                                                            ntree_limit = xgboost_train.best_ntree_limit)
-                    valid_predictions[val_index,i] = np.clip(np.nan_to_num(valid_predictions[val_index,i]),a_min=0,a_max=None)
+                    valid_predictions[val_index,i] = np.clip(valid_predictions[val_index,i],a_min=0,a_max=None)
 
                     r2 = r2_score(val_y[val_index],valid_predictions[val_index,i])
                     log_error = np.sqrt(mean_squared_log_error(val_y[val_index],valid_predictions[val_index,i]))
@@ -266,7 +258,7 @@ class GBM:
            
                     if self.test_predict: 
                         test_predictions[:,i] = self.predict_test(X_test,i,src_dir,xgboost_train)
-                        test_predictions[:,i] = np.clip(np.nan_to_num(test_predictions[:,i]),a_min=0,a_max=None)
+                        test_predictions[:,i] = np.clip(test_predictions[:,i],a_min=0,a_max=None)
 
                     if self.importance: 
                         self.visualize_importance(i,src_dir)
@@ -276,14 +268,14 @@ class GBM:
                 
                 elif self.train_cat: 
                     print("Training CatBoost")
-                    train_X = np.nan_to_num(np.array(X_train.iloc[train_index],dtype=np.float32))
-                    val_X = np.nan_to_num(np.array(X_train.iloc[val_index],dtype=np.float32))
+                    train_X = np.array(X_train.iloc[train_index],dtype=np.float32)
+                    val_X = np.array(X_train.iloc[val_index],dtype=np.float32)
                     if isinstance(y_train,pd.DataFrame): 
-                        train_y = np.nan_to_num(np.array(y_train.iloc[train_index],dtype=np.float32))
-                        val_y = np.nan_to_num(np.array(y_train.iloc[val_index],dtype=np.float32))
+                        train_y = np.array(y_train.iloc[train_index],dtype=np.float32)
+                        val_y = np.array(y_train.iloc[val_index],dtype=np.float32)
                     else: 
-                        train_y = np.nan_to_num(np.array(y_train[train_index],dtype=np.float32))
-                        val_y = np.nan_to_num(np.array(y_train[val_index],dtype=np.float32))
+                        train_y = np.array(y_train[train_index],dtype=np.float32)
+                        val_y = np.array(y_train[val_index],dtype=np.float32)
 
                     cat_train = catboost.Pool(train_X,label=train_y)
                     cat_test = catboost.Pool(val_X,label=val_y)
@@ -292,7 +284,7 @@ class GBM:
                     self.history = self.cat.get_evals_result()
                     #Index Error after first epoch, need to fix it
                     valid_predictions[val_index,i] = self.cat.predict(cat_test)
-                    valid_predictions[val_index,i] = np.clip(np.nan_to_num(valid_predictions[val_index,i]),a_min=0,a_max=None)
+                    valid_predictions[val_index,i] = np.clip(valid_predictions[val_index,i],a_min=0,a_max=None)
                     r2 = r2_score(val_y[val_index],valid_predictions[val_index,i])
                     log_error = np.sqrt(mean_squared_log_error(val_y[val_index],valid_predictions[val_index,i]))
                     print(f"R2 Score for current validation set:{r2}")
@@ -303,32 +295,32 @@ class GBM:
 
                     if self.test_predict: 
                         test_predictions[:,i] = self.predict_test(X_test,i,src_dir)
-                        test_predictions[:,i] = np.clip(np.nan_to_num(test_predictions[:,i]),a_min=0,a_max=None)
+                        test_predictions[:,i] = np.clip(test_predictions[:,i],a_min=0,a_max=None)
 
                 elif self.train_ng: 
                     print("Train NGBooost")
-                    train_X = np.nan_to_num(X_train.iloc[train_index])
-                    val_X = np.nan_to_num(X_train.iloc[val_index])
+                    train_X = X_train.iloc[train_index]
+                    val_X = X_train.iloc[val_index]
                     if isinstance(y_train,pd.DataFrame): 
-                        train_y = np.nan_to_num(y_train.iloc[train_index])
-                        val_y = np.nan_to_num(y_train.iloc[val_index])
+                        train_y = y_train.iloc[train_index]
+                        val_y = y_train.iloc[val_index]
                     else: 
-                        train_y = np.nan_to_num(y_train[train_index])
-                        val_y = np.nan_to_num(y_train[val_index])
+                        train_y = y_train[train_index]
+                        val_y = y_train[val_index]
 
                         ng = NGBoost(Dist=Normal,Score=MLE,
                                      Base=default_tree_learner,natural_gradient=True,
                                      n_estimators = 150,learning_rate = 0.01,verbose=True,
                                      verbose_eval=50).fit(train_X,train_y)
                         valid_predictions[val_index,i] = ng.predict(val_X)
-                        valid_predictions[val_index,i] = np.clip(np.nan_to_num(valid_predictions[val_index,i]),a_min=0,a_max=None)
+                        valid_predictions[val_index,i] = np.clip(valid_predictions[val_index,i],a_min=0,a_max=None)
                         rmse = np.sqrt(mean_squared_error(val_y,valid_predictions[val_index,i]))
                         r2 = r2_score(val_y,valid_predictions[val_index,i])
                         log_error = np.sqrt(mean_squared_log_error(val_y[val_index],valid_predictions[val_index,i]))
                         print(f"RMSE for current fold:{rmse}")
                         print(f"R2 Score for current fold:{r2}")
                         print(f"RMSLE for current val set:{log_error}")
-                        test_predictions[:,i] = np.clip(np.nan_to_num(ng.predict(X_test)),a_min=0,a_max=None)
+                        test_predictions[:,i] = np.clip(ng.predict(X_test),a_min=0,a_max=None)
                 i += 1
             if self.jsonize:
                 print("Saving model parameters to json")
