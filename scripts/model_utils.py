@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.metrics import mean_squared_log_error
+import scipy.stats as stats
 
 # Based on  https://www.kaggle.com/arjanso/reducing-dataframe-memory-size-by-65
 def reduce_mem_usage(df: pd.DataFrame) -> pd.DataFrame:
@@ -63,3 +63,24 @@ def reduce_mem_usage(df: pd.DataFrame) -> pd.DataFrame:
     print("Memory usage is: ",mem_usg," MB")
     print("This is ",100*mem_usg/start_mem_usg,"% of the initial size")
     return df, NAlist
+
+
+def percentile_condition(df: pd.DataFrame) -> pd.DataFrame:
+    print("Removing outliers based on percentile conditioning")
+    print(f"Input data shape: {df.shape}")
+    # ========================================================
+    labels = df['meter_reading']
+    z_score = stats.zscore(labels)
+    IQR = np.percentile(z_score,75) - np.percentile(z_score,25)
+    const = IQR * 1.5 
+    lower_treshold = np.percentile(z_score,25) - const 
+    upper_treshold = np.percentile(z_score,75) + const 
+    # Non outliers data 
+    cleaned_labels = df['meter_reading'].between(lower_treshold,upper_treshold)
+    print("False/True values while removing the outliers:\n")
+    print(cleaned_labels.value_counts())
+    # Removing indexes of outliers data
+    indexes = df[~cleaned_labels].index 
+    cleaned_df = df.drop(indexes,axis=0)
+    print(f"Final shape after removing outliers: {cleaned_labels.shape[0]}")
+    return cleaned_df  

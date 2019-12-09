@@ -195,8 +195,8 @@ class GBM:
                     valid_predictions[val_index,i] = gbm.predict(val_X,num_iteration=gbm.best_iteration)
                     valid_predictions[val_index,i] = np.clip(valid_predictions[val_index,i],a_min=0,a_max=None)
 
-                    r2= r2_score(val_y[val_index],valid_predictions[val_index,i])
-                    log_error = np.sqrt(mean_squared_log_error(val_y[val_index],valid_predictions[val_index,i]))
+                    r2= r2_score(np.nan_to_num(val_y[val_index]),np.nan_to_num(valid_predictions[val_index,i]))
+                    log_error = np.sqrt(mean_squared_log_error(np.nan_to_num(val_y[val_index]),np.nan_to_num(valid_predictions[val_index,i])))
                     print(f"R2 Score for current validation set:{r2}")
                     print(f"RMSLE for current val set:{log_error}")
                 
@@ -220,14 +220,14 @@ class GBM:
                         
                 elif self.train_xg: 
                     print("Train XGBooost")
-                    train_X = X_train.iloc[train_index]
-                    val_X = X_train.iloc[val_index]
+                    train_X = np.nan_to_num(X_train.iloc[train_index])
+                    val_X = np.nan_to_num(X_train.iloc[val_index])
                     if isinstance(y_train,pd.DataFrame): 
-                        train_y = y_train.iloc[train_index]
-                        val_y = y_train.iloc[val_index]
+                        train_y = np.nan_to_num(y_train.iloc[train_index])
+                        val_y = np.nan_to_num(y_train.iloc[val_index])
                     else: 
-                        train_y = y_train[train_index]
-                        val_y =  y_train[val_index]
+                        train_y = np.nan_to_num(y_train[train_index])
+                        val_y =  np.nan_to_num(y_train[val_index])
                     
                     xg_train = xgb.DMatrix(train_X,label=train_y,feature_names=X_train.columns)
                     xg_val = xgb.DMatrix(val_X,label=val_y,feature_names=X_train.columns)
@@ -243,8 +243,8 @@ class GBM:
                                                                            ntree_limit = xgboost_train.best_ntree_limit)
                     valid_predictions[val_index,i] = np.clip(valid_predictions[val_index,i],a_min=0,a_max=None)
 
-                    r2 = r2_score(val_y[val_index],valid_predictions[val_index,i])
-                    log_error = np.sqrt(mean_squared_log_error(val_y[val_index],valid_predictions[val_index,i]))
+                    r2= r2_score(np.nan_to_num(val_y[val_index]),np.nan_to_num(valid_predictions[val_index,i]))
+                    log_error = np.sqrt(mean_squared_log_error(np.nan_to_num(val_y[val_index]),np.nan_to_num(valid_predictions[val_index,i])))
                     print(f"R2 Score for current validation set:{r2}")
                     print(f"RMSLE for current val set:{log_error}")
                 
@@ -285,8 +285,8 @@ class GBM:
                     #Index Error after first epoch, need to fix it
                     valid_predictions[val_index,i] = self.cat.predict(cat_test)
                     valid_predictions[val_index,i] = np.clip(valid_predictions[val_index,i],a_min=0,a_max=None)
-                    r2 = r2_score(val_y[val_index],valid_predictions[val_index,i])
-                    log_error = np.sqrt(mean_squared_log_error(val_y[val_index],valid_predictions[val_index,i]))
+                    r2= r2_score(np.nan_to_num(val_y[val_index]),np.nan_to_num(valid_predictions[val_index,i]))
+                    log_error = np.sqrt(mean_squared_log_error(np.nan_to_num(val_y[val_index]),np.nan_to_num(valid_predictions[val_index,i])))
                     print(f"R2 Score for current validation set:{r2}")
                     print(f"RMSLE for current val set:{log_error}")
                     if self.save_model:
@@ -299,14 +299,14 @@ class GBM:
 
                 elif self.train_ng: 
                     print("Train NGBooost")
-                    train_X = X_train.iloc[train_index]
-                    val_X = X_train.iloc[val_index]
+                    train_X = np.nan_to_num(X_train.iloc[train_index])
+                    val_X = np.nan_to_num(X_train.iloc[val_index])
                     if isinstance(y_train,pd.DataFrame): 
-                        train_y = y_train.iloc[train_index]
-                        val_y = y_train.iloc[val_index]
+                        train_y = np.nan_to_num(y_train.iloc[train_index])
+                        val_y = np.nan_to_num(y_train.iloc[val_index])
                     else: 
-                        train_y = y_train[train_index]
-                        val_y = y_train[val_index]
+                        train_y = np.nan_to_num(y_train[train_index])
+                        val_y = np.nan_to_num(y_train[val_index])
 
                         ng = NGBoost(Dist=Normal,Score=MLE,
                                      Base=default_tree_learner,natural_gradient=True,
@@ -314,9 +314,9 @@ class GBM:
                                      verbose_eval=50).fit(train_X,train_y)
                         valid_predictions[val_index,i] = ng.predict(val_X)
                         valid_predictions[val_index,i] = np.clip(valid_predictions[val_index,i],a_min=0,a_max=None)
-                        rmse = np.sqrt(mean_squared_error(val_y,valid_predictions[val_index,i]))
-                        r2 = r2_score(val_y,valid_predictions[val_index,i])
-                        log_error = np.sqrt(mean_squared_log_error(val_y[val_index],valid_predictions[val_index,i]))
+                        rmse = np.sqrt(mean_squared_error(np.nan_to_num(val_y[val_index]),np.nan_to_num(valid_predictions[val_index,i])))
+                        r2= r2_score(np.nan_to_num(val_y[val_index]),np.nan_to_num(valid_predictions[val_index,i]))
+                        log_error = np.sqrt(mean_squared_log_error(np.nan_to_num(val_y[val_index]),np.nan_to_num(valid_predictions[val_index,i])))
                         print(f"RMSE for current fold:{rmse}")
                         print(f"R2 Score for current fold:{r2}")
                         print(f"RMSLE for current val set:{log_error}")
