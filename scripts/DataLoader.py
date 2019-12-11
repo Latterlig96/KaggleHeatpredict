@@ -1,9 +1,8 @@
 import pandas as pd 
 import numpy as np
-from model_utils import reduce_mem_usage
-import category_encoders as ce
+from model_utils import reduce_mem_usage,fill_weather_dataset
+from model_utils import find_bad_zeros,find_bad_building1099
 from sklearn.preprocessing import LabelEncoder
-from collections import defaultdict
 import gc
 
 """
@@ -26,12 +25,16 @@ def train_df(build_meta_csv: str,
         unmerged : bool,
         drop : bool,
         encode_and_scale : bool,
+        trim_bad_rows : bool,
+        fill_weather : bool,
         col_drop = None,
         axis = None) -> pd.DataFrame:
         # Reading data
         build = pd.read_csv(build_meta_csv)
         train_data = pd.read_csv(train_csv)
         weather = pd.read_csv(weather_train_csv)
+        if fill_weather:
+            weather = fill_weather_dataset(weather)
         # Reducing memory on the train data
         train = reduce_mem_usage(train_data)
         if merge:
@@ -43,9 +46,14 @@ def train_df(build_meta_csv: str,
             train['timestamp'] = pd.to_datetime(train['timestamp'])
             train['year'] = train['timestamp'].dt.year.astype(np.uint16)
             train['month'] = train['timestamp'].dt.month.astype(np.uint8)
-            train['day'] = train['timestamp'].dt.month.astype(np.uint8)
+            train['day'] = train['timestamp'].dt.day.astype(np.uint8)
             train['weekday'] = train['timestamp'].dt.weekday.astype(np.uint8)
             train['hour'] = train['timestamp'].dt.hour.astype(np.uint8)
+        if trim_bad_rows:
+            #bad_zeros = find_bad_zeros(train,train['meter_reading'])
+            bad_building = find_bad_building1099(train,train['meter_reading'])
+            #train = train.drop(bad_zeros) 
+            train = train.drop(bad_building)
         if drop:
             train = train.drop(col_drop,axis=axis)
             gc.collect()
@@ -71,7 +79,7 @@ def test_df(test_csv : str,
         test_data = pd.read_csv(test_csv)[0:1000000]
         weather_test = pd.read_csv(weather_test_csv)[0:1000000]
         # Reducing memory on the test data 
-        test = reduce_mem_usage(test_data)
+        test = reduce_mem_usage(test_data)[0:1000000]
         if merge:
             test = test_data.merge(weather_test,on=['timestamp'],how='left')
             del weather_test
@@ -90,11 +98,3 @@ def test_df(test_csv : str,
             return test,weather_test
         else: 
             return test
-        
-def filling_nan_values(df: pd.DataFrame) -> pd.DataFrame: 
-    ratio = df.count()/len(df) 
-    cols = ratio[ratio < 1].index
-    for col in cols: 
-        print(f"Filling Column:{col}")
-        df[col] = df[col].fillna(df[col].mean())
-    return df
