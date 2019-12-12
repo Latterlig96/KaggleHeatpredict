@@ -50,9 +50,9 @@ def train_df(build_meta_csv: str,
             train['weekday'] = train['timestamp'].dt.weekday.astype(np.uint8)
             train['hour'] = train['timestamp'].dt.hour.astype(np.uint8)
         if trim_bad_rows:
-            #bad_zeros = find_bad_zeros(train,train['meter_reading'])
+            bad_zeros = find_bad_zeros(train,train['meter_reading'])
             bad_building = find_bad_building1099(train,train['meter_reading'])
-            #train = train.drop(bad_zeros) 
+            train = train.drop(bad_zeros) 
             train = train.drop(bad_building)
         if drop:
             train = train.drop(col_drop,axis=axis)
@@ -73,13 +73,16 @@ def test_df(test_csv : str,
         datetime : bool,
         unmerged : bool,
         drop : bool,
+        fill_weather : bool,
         col_drop = None,
         axis = None) -> pd.DataFrame:
         # Reading data 
-        test_data = pd.read_csv(test_csv)[0:1000000]
-        weather_test = pd.read_csv(weather_test_csv)[0:1000000]
+        test_data = pd.read_csv(test_csv)
+        weather_test = pd.read_csv(weather_test_csv)
+        if fill_weather: 
+            weather = fill_weather_dataset(weather_test)
         # Reducing memory on the test data 
-        test = reduce_mem_usage(test_data)[0:1000000]
+        test = reduce_mem_usage(test_data)
         if merge:
             test = test_data.merge(weather_test,on=['timestamp'],how='left')
             del weather_test

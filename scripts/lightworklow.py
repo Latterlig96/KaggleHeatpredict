@@ -110,6 +110,7 @@ class GBM:
             y_train,
             X_test : pd.DataFrame,
             n_folds : int,
+            col : str,
             parameters = None,
             categorical_features = None):
 
@@ -122,6 +123,10 @@ class GBM:
             : X_test,y_test - test dataset with labels
 
             : n_folds - number of folds to split dataset 
+
+            : col - if self.stratify is True, you need to specified a col that consist of 
+
+            binary of multilabel classes because StratifiedKFold does not support continous values
 
             : parameters - run_parameters that are necessary to run the Tree-Based models,
 
@@ -139,7 +144,6 @@ class GBM:
 
             if isinstance(y_train, pd.DataFrame):
                 y_train = y_train.values
-            
             if src_dir:
                 if os.path.isdir(src_dir):
                     pass
@@ -148,28 +152,26 @@ class GBM:
                     os.makedirs(src_dir)
             try: 
                 print("X_train_shape",X_train.shape)
-                print("X_test_shape",X_test.shape)
+                if X_test is not None:
+                    print("X_test_shape",X_test.shape)
             except ValueError: 
                 print("Shape does not fit")
 
             if self.stratify:
-                # Bugs...
-                #print("Make {} stratify folds".format(n_folds))
-                #kf = StratifiedKFold(n_splits=n_folds,random_state = self.seed)
-                raise Exception("Bugs... Could not proceed")
-
+                print(f"Make {n_folds} stratified folds")
+                kf = StratifiedKFold(n_splits=n_folds,shuffle=True,random_state = self.seed)
             elif self.time_series:
                 kf = TimeSeriesSplit(n_splits=n_folds,random_state = self.seed)
             else: 
                 kf = KFold(n_splits=n_folds,random_state = self.seed)
 
             valid_predictions = np.zeros((X_train.shape[0],n_folds))
-            test_predictions = np.zeros((X_test.shape[0],n_folds))
-            print("vaild_predict",valid_predictions.shape[0])
-            print("test_predictions",test_predictions.shape[0])
-            
+            print("Vaild_predict",valid_predictions.shape[0])
+            if X_test is not None: 
+                test_predictions = np.zeros((X_test.shape[0],n_folds))
+                print("Test_predict",test_predictions.shape[0])
             i = 0
-            for train_index, val_index in kf.split(X_train,y_train):
+            for train_index, val_index in kf.split(X_train,y_train) if self.stratify is False else kf.split(X_train,X_train[col]):
                 if self.train_gbm:
                     print("Train LightGBM")
                     train_X = X_train.iloc[train_index]
